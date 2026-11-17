@@ -6,11 +6,14 @@
 
 当前版本 **1.1.0 · 试用版**，支持GitHub在线同步提取规则和卡片样式。每人使用自己的授权、应用、待办表和接收进程，仓库只存通用程序与配置。
 
+**尚未完成Kiro、Codex、豆包工作各自的独立账号端到端验收，不能承诺导入后即可完整使用。** 已通过的是程序离线测试、云端Python检查、公开下载和真实GitHub配置同步。各宿主的安装、飞书授权、卡片回传及无人值守定时仍须实测。特别是云端定时能否访问本机CLI与常驻接收端，目前没有验证。详见[兼容性与验收状态](docs/compatibility.md)。
+
 ## 快速入口
 
 - **给同事安装**：[安装说明](docs/installation.md)，下载本项目Releases中的技能ZIP。
 - **你要改规则和样式**：[编辑 live/config.json](live/config.json)，按[维护说明](docs/online-configuration.md)操作。
 - **查看完整技能**：[SKILL.md](skills/feishu-work-todo/SKILL.md)。
+- **判断自己的平台能否用**：[兼容性与验收状态](docs/compatibility.md)。
 - **更新记录**：[CHANGELOG.md](CHANGELOG.md)。
 
 ## 功能

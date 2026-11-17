@@ -1,5 +1,7 @@
 # 安装与升级
 
+当前是待跨宿主验收的试用包；下面的路径依据官方能力说明，不能代替目标客户端的实际导入与全流程验证。开始前先看[兼容性状态](compatibility.md)。
+
 ## 新用户
 
 1. 从仓库Releases下载 `feishu-work-todo-1.1.0.zip`。
@@ -8,6 +10,8 @@
 4. 默认GitHub源随包提供。初次运行 `online_config.py sync` 检查规则版本；公开源无需GitHub授权，私有源需要本人读取权限。
 
 GitHub安装源代码可直接定位 `skills/feishu-work-todo`，不要把整个仓库当作技能目录，也不要把当前使用者的运行目录发给别人。
+
+Codex本地客户端：按官方本地技能机制，将解压的 `feishu-work-todo` 文件夹放入使用者自己的 `~/.agents/skills/`，或项目的 `.agents/skills/`；也可让其内置技能安装器按仓库及技能子目录安装。先确认技能已被识别，再初始化。Codex云端、Web会话与本地桌面运行环境不同，不自动视为适配。
 
 ## 已安装1.0
 
@@ -21,9 +25,13 @@ GitHub安装源代码可直接定位 `skills/feishu-work-todo`，不要把整个
 
 定时与卡片保存必须分别验证。Kiro导入技能本身不产生时钟任务；宿主缺少能力时应报告具体缺项，不假称已启用。
 
+豆包工作官方描述定时任务在云端运行；本包的本地CLI profile、用户状态文件和登录启动接收端能否在该定时环境中使用，仍是未验证的适配项。不能仅创建一个云端定时任务就报告本地方案已经全程可用。
+
 ## 官方参考
 
 - [Kiro Agent Skills](https://kiro.dev/docs/skills/)
 - [豆包工作技能与定时任务介绍](https://www.feishu.cn/content/article/7677519271848610746)
 - [Kiro CLI Headless](https://kiro.dev/docs/cli/headless/)
 - [飞书CLI](https://github.com/larksuite/cli)
+- [Codex技能](https://developers.openai.com/codex/skills)
+- [Codex定时任务](https://developers.openai.com/codex/app/automations)
