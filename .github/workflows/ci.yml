@@ -1,0 +1,34 @@
+name: Check and build
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ['3.9', '3.13']
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Validate sources and live configuration
+        run: python -B tools/check.py
+      - name: Run isolated tests
+        run: python -B -m unittest discover -s tests -v
+      - name: Build importable ZIP
+        run: python -B tools/build_release.py
+      - uses: actions/upload-artifact@v7
+        if: matrix.python == '3.13'
+        with:
+          name: feishu-work-todo-skill
+          path: dist/*
+          if-no-files-found: error

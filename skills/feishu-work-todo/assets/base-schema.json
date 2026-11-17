@@ -1,0 +1,118 @@
+[
+  {
+    "name": "事项",
+    "type": "text"
+  },
+  {
+    "name": "处理完毕",
+    "type": "checkbox",
+    "description": "本人确认完成后勾选；取消可恢复提醒。"
+  },
+  {
+    "name": "跟进类型",
+    "type": "select",
+    "multiple": false,
+    "options": [
+      {
+        "name": "待处理",
+        "hue": "Blue"
+      },
+      {
+        "name": "待他人反馈",
+        "hue": "Orange"
+      },
+      {
+        "name": "需确认",
+        "hue": "Gray"
+      }
+    ]
+  },
+  {
+    "name": "本人职责",
+    "type": "select",
+    "multiple": false,
+    "options": [
+      {
+        "name": "由你执行",
+        "hue": "Blue"
+      },
+      {
+        "name": "由你确认",
+        "hue": "Orange"
+      },
+      {
+        "name": "由你复核",
+        "hue": "Purple"
+      },
+      {
+        "name": "职责待确认",
+        "hue": "Gray"
+      }
+    ]
+  },
+  {
+    "name": "事项分类",
+    "type": "select",
+    "multiple": false,
+    "options": [
+      {
+        "name": "项目推进"
+      },
+      {
+        "name": "交付与评审"
+      },
+      {
+        "name": "团队管理"
+      },
+      {
+        "name": "流程与数据"
+      },
+      {
+        "name": "其他"
+      }
+    ]
+  },
+  {
+    "name": "通知摘要",
+    "type": "text",
+    "description": "聊天清单中的一条简短行动说明，建议40字以内。"
+  },
+  {
+    "name": "日期说明",
+    "type": "text"
+  },
+  {
+    "name": "下一步",
+    "type": "text"
+  },
+  {
+    "name": "原消息",
+    "type": "text",
+    "style": {
+      "type": "url"
+    }
+  },
+  {
+    "name": "事项编号",
+    "type": "text",
+    "description": "稳定去重标识；不要因为重复扫描而重新创建。"
+  },
+  {
+    "name": "通知批次",
+    "type": "text"
+  },
+  {
+    "name": "来源日期",
+    "type": "datetime",
+    "style": {
+      "format": "yyyy-MM-dd"
+    }
+  },
+  {
+    "name": "截止日期",
+    "type": "datetime",
+    "style": {
+      "format": "yyyy-MM-dd"
+    }
+  }
+]

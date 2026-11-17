@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "version": "2026-11-17.1",
+  "min_client": "1.1.0",
+  "collection": {
+    "first_scan_days": 15,
+    "overlap_hours": 48,
+    "exclude_groups_containing": ["八卦", "摸鱼", "表情包", "羽毛球", "徒步社", "足球社", "停车位", "吃饭吧", "租房", "闲鱼", "AI编程社区"]
+  },
+  "extraction": {
+    "summary_max_chars": 90,
+    "guidance": [
+      "提取本人承诺、明确交办及通知中与本人有关的工作；不要把群内所有工作都分配给本人。",
+      "区分本人职责与进展：别人执行、本人复核时，写明等谁交付什么后再由本人复核。",
+      "职责不明确标为职责待确认，不默认由本人执行；可按证据扩展协调、跟进、审批等职责。",
+      "第三方表示已完成时更新进展，不代替本人确认其执行、复核或验收已完成。",
+      "合并同一工作的重复提及，保留最早来源与新的进展；没看到完成回复只能标需确认。",
+      "名称简短清晰，不堆括号；通知摘要只写一条本人下一步，建议40字以内。",
+      "没有明确截止日期就留空，不把交接时间或期望日期直接当成个人硬性截止。"
+    ]
+  },
+  "style": {
+    "title_template": "工作待办清单 · {date}",
+    "subtitle_template": "{count}项待办 · 勾选后统一保存",
+    "header_template": "blue",
+    "intro": "勾选已完成的事项，点击“确定完成”统一保存。",
+    "empty_intro": "当前没有未完成的工作待办。",
+    "submit_text": "确定完成",
+    "complete_text": "全部已完成",
+    "deadline_label": "截止",
+    "next_step_label": "下一步",
+    "unset_date_text": "未设定",
+    "uncertain_date_text": "待确认",
+    "fallback_next_step": "确认下一步安排。",
+    "detail_bullet": "•",
+    "title_bold": true,
+    "show_deadline": true,
+    "show_next_step": true,
+    "role_order": ["由你执行", "由你确认", "由你复核"],
+    "role_colors": {"由你执行": "blue", "由你确认": "orange", "由你复核": "purple"}
+  }
+}

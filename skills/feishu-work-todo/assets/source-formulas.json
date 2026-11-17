@@ -1,0 +1,12 @@
+[
+  {
+    "name": "来源月份",
+    "type": "formula",
+    "expression": "IF(ISBLANK([来源日期]),\"未标日期\",TEXT([来源日期],\"YYYY-MM\"))"
+  },
+  {
+    "name": "时间分类",
+    "type": "formula",
+    "expression": "IF([处理完毕],\"已完成\",IF(ISBLANK([截止日期]),\"未定截止\",IF([截止日期]<TODAY(),\"日期已过·需确认\",IF([截止日期]=TODAY(),\"今日到期\",\"后续到期\"))))"
+  }
+]
