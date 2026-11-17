@@ -32,6 +32,8 @@ import send_batch_card as sender
 import collect
 import verify_callback as verify
 import online_config
+import assistant_control
+import control_panel
 
 class FakeBase:
     def __init__(self):
@@ -90,12 +92,15 @@ class PortableTests(unittest.TestCase):
         rp.prepare_storage();rp.write_state(copy.deepcopy(INITIAL));self.base=FakeBase()
         self.stack=contextlib.ExitStack()
         self.stack.enter_context(patch.object(online_config,'get_source',return_value=None))
+        self.stack.enter_context(patch.object(control_panel,'install_entry',return_value={'entry_created':True,'entry':'TEST_ENTRY'}))
         self.stack.enter_context(patch.object(rp,'cli_json',return_value={'identities':{'user':{'status':'ready','available':True,'openId':IDENTITY['recipient_open_id'],'userName':'Offline User'}},'appId':IDENTITY['application_id']}))
         self.stack.enter_context(patch.object(ds,'call',side_effect=self.base.call))
         self.stack.enter_context(patch.object(ds,'rows',side_effect=self.base.rows))
         self.stack.enter_context(contextlib.redirect_stdout(io.StringIO()))
         self.addCleanup(self.stack.close)
-    def init(self):manage.init(True);return json.loads((rp.ROOT/'state.json').read_text())
+    def init(self):
+        manage.init(True);assistant_control.set_enabled(True)
+        return json.loads((rp.ROOT/'state.json').read_text())
     def proposal(self,key='a'):
         return {'key':key,'title':'Generic work','role':'由你复核','followup':'待他人反馈','category':'其他',
                 'summary':'复核协作方的交付。','next_step':'等交付明确后复核。','source':{'message_id':'om_OFFLINE','chat_id':'oc_OFFLINE','time':'2026-11-17T09:00:00+08:00','url':'https://example.invalid/message'}}

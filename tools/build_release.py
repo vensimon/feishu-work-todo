@@ -18,14 +18,14 @@ def main():
     args.output.mkdir(parents=True,exist_ok=True);out=args.output/('feishu-work-todo-'+version+'.zip')
     entries=[]
     for file in sorted(SKILL.rglob('*')):
-        if not file.is_file() or '__pycache__' in file.parts or file.suffix not in ['.py','.md','.json']:continue
+        if not file.is_file() or '__pycache__' in file.parts or file.suffix not in ['.py','.md','.json','.html','.command','.cmd','.sh']:continue
         relative=file.relative_to(SKILL)
-        if file.is_symlink() or (relative.parts[0] not in ['assets','references','scripts'] and str(relative)!='SKILL.md'):raise ValueError('Unexpected package resource')
+        if file.is_symlink() or (relative.parts[0] not in ['assets','references','scripts'] and str(relative) not in ['SKILL.md','Open-Control-Panel.command','Open-Control-Panel.cmd','Open-Control-Panel.sh']):raise ValueError('Unexpected package resource')
         content=(REPO/'live/config.json').read_bytes() if str(relative)=='assets/default-config.json' else file.read_bytes()
         entries.append(('feishu-work-todo/'+relative.as_posix(),content))
     with zipfile.ZipFile(out,'w',compression=zipfile.ZIP_DEFLATED) as archive:
         for name,content in entries:
-            entry=zipfile.ZipInfo(name,(2026,1,1,0,0,0));entry.compress_type=zipfile.ZIP_DEFLATED;entry.external_attr=0o644<<16
+            entry=zipfile.ZipInfo(name,(2026,1,1,0,0,0));entry.compress_type=zipfile.ZIP_DEFLATED;entry.external_attr=(0o755 if name.endswith(('.command','.sh')) else 0o644)<<16
             archive.writestr(entry,content)
     with zipfile.ZipFile(out) as archive:
         if archive.testzip():raise ValueError('ZIP integrity failed')

@@ -4,10 +4,15 @@
 
 ## 新用户
 
-1. 从仓库Releases下载 `feishu-work-todo-1.1.0.zip`。
+1. 从仓库Releases下载 `feishu-work-todo-1.2.0.zip`。
 2. 豆包工作：在技能入口导入本地技能文件，或把包交给AI请求引导安装。Kiro：解压后在 Agent Steering & Skills → + → Import a skill → Local folder 中选择 `feishu-work-todo`。
 3. 把README中的初始化话术发给AI，由其按技能引导完成依赖、本人授权、独立应用、台账、卡片回调和定时核验。
 4. 默认GitHub源随包提供。初次运行 `online_config.py sync` 检查规则版本；公开源无需GitHub授权，私有源需要本人读取权限。
+5. 初始化后桌面生成“飞书待办控制台”。首次默认关闭，由本人打开后点击“开启助手”，再完成卡片和定时验证。以后自行从此入口启停；无需AI代操作。包内也有Open-Control-Panel启动文件，详见[开关说明](../skills/feishu-work-todo/references/control-panel.md)。
+
+## 已安装1.1，升级控制台
+
+替换到1.2程序包，保留自己的运行目录和台账，让本人的AI运行 `scripts/control_panel.py install-entry`。将原定时任务正文加上“先读取本机开关，关闭时直接跳过”；这不会自动创建新任务。使用控制台开关时会按本人绑定启动/停止新版接收程序，不需要重新建表或清空数据。
 
 GitHub安装源代码可直接定位 `skills/feishu-work-todo`，不要把整个仓库当作技能目录，也不要把当前使用者的运行目录发给别人。
 

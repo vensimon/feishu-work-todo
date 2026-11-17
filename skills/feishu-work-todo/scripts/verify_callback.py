@@ -7,10 +7,13 @@ import uuid
 from runtime_paths import ROOT,assert_identity,write_state
 from batch_card_runtime import CARDS,read,save,cli
 from render_batch_card import build
+from assistant_control import require_enabled,run_guarded
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('action',choices=['send','check'])
-    args=parser.parse_args();state=read(ROOT/'state.json');assert_identity(state)
+    args=parser.parse_args()
+    if args.action=='send':require_enabled()
+    state=read(ROOT/'state.json');assert_identity(state)
     probe=ROOT/'callback-probe.json'
     if args.action=='check':
         mid=read(probe,{}).get('message_id')
@@ -37,4 +40,4 @@ def main():
     save(probe,{'message_id':mid,'sent_at':datetime.datetime.now(datetime.timezone.utc).isoformat()})
     print(json.dumps({'ok':True,'message_id':mid,'next':'User clicks verification button, then run check'}))
 
-if __name__=='__main__':main()
+if __name__=='__main__':run_guarded(main)

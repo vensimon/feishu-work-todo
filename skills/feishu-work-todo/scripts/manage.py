@@ -9,6 +9,7 @@ import subprocess
 import sys
 from runtime_paths import ROOT,PROFILE,CLI,current_identity,assert_identity,prepare_storage,write_state,cli_json
 from online_config import CLIENT_VERSION,get_config
+from assistant_control import require_enabled,read_control,set_enabled,run_guarded
 
 SCRIPTS=pathlib.Path(__file__).resolve().parent
 PACKAGE=SCRIPTS.parent
@@ -20,7 +21,8 @@ def load():
 
 def doctor():
     result={'skill_version':CLIENT_VERSION,'storage':str(ROOT),'cli_profile':PROFILE,'cli_found':bool(shutil.which(CLI)),
-            'initialized':(ROOT/'state.json').exists(),'callback_connected':False,'host_schedule_verified':False}
+            'initialized':(ROOT/'state.json').exists(),'callback_connected':False,'host_schedule_verified':False,
+            'assistant_enabled':read_control()['enabled']}
     try:
         identity=current_identity();result['authorized_as']=identity['recipient_name']
         if result['initialized']:
@@ -72,9 +74,14 @@ def init(confirm):
     state['dashboard']['url']=state['base']['url'].split('?')[0]+'?table='+state['dashboard']['dashboard_id']
     configure_views(state)
     state['setup']['base_and_dashboard_ready']=True
+    if not (ROOT/'assistant-control.json').exists():set_enabled(False)
+    from control_panel import install_entry
+    try:state['control_entry']=install_entry()
+    except (OSError,ValueError) as error:state['control_entry']={'entry_created':False,'attention':str(error)}
     write_state(state)
     print(json.dumps({'ok':True,'owner':identity['recipient_name'],'base_url':state['base']['url'],
-                      'dashboard_url':state['dashboard']['url'],'remaining':['configure card.action.trigger for your own app','verify callback roundtrip','configure and verify your host scheduler']},ensure_ascii=False))
+                      'dashboard_url':state['dashboard']['url'],'control_entry':state['control_entry'],
+                      'remaining':['configure card.action.trigger for your own app','open personal control panel and enable the receiver','verify callback roundtrip','configure and verify your host scheduler']},ensure_ascii=False))
 
 def configure_views(state):
     from dashboard_support import call
@@ -95,6 +102,7 @@ def configure_views(state):
     state['base']['classification_views']=by
 
 def upsert(path):
+    generation=require_enabled()
     state=load()
     from dashboard_support import call,rows
     plans=json.loads(pathlib.Path(path).read_text())
@@ -106,6 +114,7 @@ def upsert(path):
     by_key={r.get('事项编号'):r for r in current if r.get('事项编号')}
     old={i['key']:i for i in state['items']};added=changed=0
     for plan in plans:
+        require_enabled(generation)
         patch={}
         key=plan['key'];source=plan['source']
         if not isinstance(key,str) or not key or key.startswith('__'):raise ValueError('Use a stable, non-test item key')
@@ -181,9 +190,10 @@ def main():
     elif args.cmd=='upsert':upsert(args.file)
     elif args.cmd=='option-add':option_add(args.field,args.name,args.confirm)
     elif args.cmd=='finish-scan':
+        require_enabled()
         state=load();dt.datetime.fromisoformat(args.through)
         state['last_successful_scan_at']=args.through;write_state(state)
     elif args.cmd=='schedule-record':
         state=load();state['host_schedule']={'host':args.host,'job_id':args.job_id,'verified':True};write_state(state)
 
-if __name__=='__main__':main()
+if __name__=='__main__':run_guarded(main)

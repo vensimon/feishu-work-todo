@@ -5,8 +5,10 @@ import json
 import pathlib
 from runtime_paths import ROOT,cli_json,assert_identity,prepare_storage
 from online_config import sync,get_config
+from assistant_control import require_enabled,run_guarded
 
 def main():
+    generation=require_enabled()
     state=json.loads((ROOT/'state.json').read_text());assert_identity(state);prepare_storage()
     config_sync=sync();settings=get_config()['collection']
     zone=dt.timezone(dt.timedelta(hours=8));end=dt.datetime.now(zone).replace(microsecond=0)
@@ -14,10 +16,12 @@ def main():
     start=dt.datetime.fromisoformat(watermark)-dt.timedelta(hours=settings['overlap_hours']) if watermark else end-dt.timedelta(days=settings['first_scan_days'])
     if start.tzinfo is None:raise ValueError('Scan watermark must include timezone')
     folder=ROOT/'evidence'/end.strftime('%Y%m%dT%H%M%S');folder.mkdir(parents=True)
+    require_enabled(generation)
     listing=cli_json(['im','+chat-list','--as','user','--types','p2p,group','--sort','active_time',
                       '--page-size','100','--page-all','--page-limit','100'],cwd=ROOT)
     if listing.get('meta',{}).get('pagination',{}).get('complete') is not True:
         raise RuntimeError('Conversation metadata is incomplete; do not read an unverified scope')
+    require_enabled(generation)
     social=settings['exclude_groups_containing']
     excluded_ids=set(state.get('excluded_chat_ids',[]))
     allowed=[];excluded=[]
@@ -36,7 +40,9 @@ def main():
         args=['im','+messages-search','--as','user','--query','','--chat-id',','.join(ids),
               '--start',start.isoformat(),'--end',end.isoformat(),'--page-size','50','--page-all','--page-limit','40','--no-reactions']
         while True:
+            require_enabled(generation)
             result=cli_json(args+(['--page-token',cursor] if cursor else []),cwd=ROOT)
+            require_enabled(generation)
             data=result['data'];messages.extend(data.get('messages',[]))
             if data.get('has_more') is False:break
             next_cursor=data.get('page_token')
@@ -51,10 +57,11 @@ def main():
         for messages in pool.map(batch,enumerate(batches)):
             for message in messages:merged[message['message_id']]=message
     (folder/'messages.json').write_text(json.dumps(list(merged.values()),ensure_ascii=False))
+    require_enabled(generation)
     result={'complete':True,'start':start.isoformat(),'through':end.isoformat(),'messages':len(merged),
             'evidence_directory':str(folder),'topics_and_other_exclusions':len(excluded),'eligible_chats':len(allowed),
             'config_version':get_config()['version'],'rules_file':config_sync['rules_file'],'config_sync_mode':config_sync['mode']}
     (folder/'manifest.json').write_text(json.dumps(result,ensure_ascii=False,indent=2))
     print(json.dumps(result,ensure_ascii=False))
 
-if __name__=='__main__':main()
+if __name__=='__main__':run_guarded(main)

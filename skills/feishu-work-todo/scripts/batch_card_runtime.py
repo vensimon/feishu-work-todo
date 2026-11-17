@@ -9,6 +9,7 @@ import subprocess
 import time
 
 from runtime_paths import ROOT, CLI_ARGS, ENV, assert_identity
+from assistant_control import read_control,require_enabled
 WORKSPACE=ROOT
 CARDS=ROOT/'cards'
 CARDS.mkdir(parents=True,exist_ok=True)
@@ -60,6 +61,8 @@ def refresh_card(manifest, saved_keys, count):
     return card
 
 def process(event):
+    if not read_control()['enabled']:return {'ignored':'assistant_disabled'}
+    generation=require_enabled()
     state=read(ROOT/'state.json')
     if event.get('operator_id')!=state['recipient_open_id']:
         return {'ignored':'different_operator'}
@@ -91,6 +94,7 @@ def process(event):
         if current.get(item['key'])!=item['record_id']:
             raise ValueError('Stale or unknown task mapping')
     if selected:
+        require_enabled(generation)
         updates={item['record_id']:{'处理完毕':True} for item in selected}
         result=cli(['base','+record-batch-update','--as','user','--base-token',state['base']['base_token'],
                     '--table-id',state['base']['table_id'],'--json',json.dumps({'update_records':updates},ensure_ascii=False)])

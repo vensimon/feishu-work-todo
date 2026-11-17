@@ -12,8 +12,10 @@ from runtime_paths import assert_identity
 from batch_card_runtime import ROOT,CARDS,read,save,cli,patch
 from render_batch_card import build
 from online_config import sync,get_config
+from assistant_control import require_enabled,guarded_wait,run_guarded
 
 def main():
+    generation=require_enabled()
     parser=argparse.ArgumentParser()
     parser.add_argument('--batch',required=True)
     parser.add_argument('--activate-preview',action='store_true')
@@ -30,7 +32,7 @@ def main():
         if remaining>3600:raise RuntimeError('Send preparation started over one hour early')
         if remaining>0:print(json.dumps({'waiting_until':target.isoformat()}),flush=True)
         while remaining>0:
-            time.sleep(min(remaining,30))
+            guarded_wait(min(remaining,30),generation)
             remaining=(target-datetime.datetime.now(zone)).total_seconds()
         # Re-read checkbox state at send time so an item finished during preparation is excluded.
         for script in ['sync_base_status.py','dashboard_support.py']:
@@ -50,6 +52,7 @@ def main():
     if args.batch in runs:
         print(json.dumps({'ok':True,'existing':True,**runs[args.batch]},ensure_ascii=False));return
     config_sync=sync();config=get_config()
+    require_enabled(generation)
     card,mapping=build(state['items'],False,config)
     manifest={'preview':False,'batch':args.batch,'mapping':mapping,'card':card,'saved_keys':[],
               'style':config['style'],'config_version':config['version']}
@@ -67,4 +70,4 @@ def main():
     save(ROOT/'batch-card-runs.json',runs)
     print(json.dumps({'ok':True,**runs[args.batch],'config_version':config['version'],'config_sync_mode':config_sync['mode']},ensure_ascii=False))
 
-if __name__=='__main__':main()
+if __name__=='__main__':run_guarded(main)

@@ -6,6 +6,7 @@ import pathlib
 import subprocess
 
 from runtime_paths import ROOT, CLI_ARGS, ENV
+from assistant_control import require_enabled,run_guarded
 WORKSPACE=ROOT
 CONFIG=json.loads((ROOT/'state.json').read_text())
 BASE=CONFIG['base']['base_token']
@@ -66,6 +67,9 @@ def ensure_calendar(state):
     if values:create_records(table,values)
     return len(values)
 
-if __name__=='__main__':
+def main():
+    require_enabled()
     state=json.loads((ROOT/'state.json').read_text())
     print(json.dumps({'ok':True,'new_calendar_rows':ensure_calendar(state)},ensure_ascii=False))
+
+if __name__=='__main__':run_guarded(main)

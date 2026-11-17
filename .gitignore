@@ -20,3 +20,6 @@ evidence/
 artifacts/
 .idea/
 .vscode/
+assistant-control.json
+control-server.json
+receiver-launcher.cmd

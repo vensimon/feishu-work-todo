@@ -6,10 +6,12 @@ import pathlib
 import subprocess
 
 from runtime_paths import ROOT, CLI_ARGS, ENV, assert_identity
+from assistant_control import require_enabled,run_guarded
 WORKSPACE=ROOT
 STATE_FILE=ROOT/'state.json'
 
 def main():
+    generation=require_enabled()
     state = json.loads(STATE_FILE.read_text())
     assert_identity(state)
     base = state['base']
@@ -17,6 +19,7 @@ def main():
     rows = []
     offset = 0
     while True:
+        require_enabled(generation)
         relative = f'artifacts/status-sync-{offset}.ndjson'
         args = [*CLI_ARGS,'base','+record-list','--as','user','--base-token',base['base_token'],
                 '--table-id',base['table_id'],'--offset',str(offset),'--format','ndjson',
@@ -41,6 +44,7 @@ def main():
         offset += len(page)
 
     by_id = {row['record_id']:row for row in rows}
+    require_enabled(generation)
     by_key = {}
     for row in rows:
         key = row.get('事项编号')
@@ -86,4 +90,4 @@ def main():
                       'pending':sum(not row['处理完毕'] for row in work_rows),'missing_keys':missing},ensure_ascii=False))
 
 if __name__ == '__main__':
-    main()
+    run_guarded(main)

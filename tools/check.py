@@ -14,7 +14,7 @@ def main():
     forbidden=[r'(?:ou_|oc_|om_|cli_)[0-9a-f]{20,}',r'gh[pousr]_[A-Za-z0-9]{24,}','/'+'Users/[^/\\s]+/']
     files=[]
     for folder in ['skills','live','docs','tests','tools']:
-        files.extend(p for p in (REPO/folder).rglob('*') if p.is_file() and '__pycache__' not in p.parts and p.suffix in ['.py','.md','.json'])
+        files.extend(p for p in (REPO/folder).rglob('*') if p.is_file() and '__pycache__' not in p.parts and p.suffix in ['.py','.md','.json','.html','.cmd','.command','.sh'])
     for path in files:
         content=path.read_text()
         if path.suffix=='.py':ast.parse(content,filename=str(path))
