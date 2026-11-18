@@ -71,6 +71,6 @@ python3 -B -m unittest discover -s tests -v
 python3 -B tools/build_release.py
 ```
 
-运行程序只需Python标准库。测试不调用真实飞书或真实GitHub，不在仓库内保存使用者数据。当前有62项测试（包含临时本机HTTP与模拟接收进程）；仍需在目标Kiro/Codex/豆包工作环境验收，Windows登录任务需在目标系统验证。
+运行程序只需Python标准库。测试不调用真实飞书或真实GitHub，不在仓库内保存使用者数据。当前有64项测试（包含临时本机HTTP与模拟接收进程）；仍需在目标Kiro/Codex/豆包工作环境验收，Windows登录任务需在目标系统验证。
 
 更多见[开发约定](CONTRIBUTING.md)、[数据边界](SECURITY.md)与[部署方式](docs/architecture.md)。

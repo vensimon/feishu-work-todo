@@ -71,6 +71,19 @@ class ReviewAuditTests(unittest.TestCase):
         self.state['items'][0]['completed'] = True
         with self.assertRaisesRegex(ValueError, 'completed prior round'):
             audit.validate(self.messages, OWNER, self.ledger, self.state)
+    def test_actual_checkbox_confirmation_after_clue_closes_it(self):
+        self.state['items'][0].update(completed=True, base_completed_at='2026-01-05T15:05:00+08:00')
+        self.ledger[0].update(decision='exclude', reason_code='recorded_completion', item_key='review-a',
+                              reason='本人已在回稿后勾选完成，有实际确认时间。')
+        self.assertEqual(audit.validate(self.messages, OWNER, self.ledger, self.state)['counts']['exclude'], 1)
+    def test_old_checkbox_or_recent_sync_cannot_close_new_revision(self):
+        for closed in ['2026-01-05T15:01:00+08:00', None]:
+            with self.subTest(closed=closed):
+                self.state['items'][0].update(completed=True, base_completed_at=closed,
+                                              completion_checked_at='2026-01-06T12:00:00+08:00')
+                self.ledger[0].update(decision='exclude', reason_code='recorded_completion', item_key='review-a')
+                with self.assertRaisesRegex(ValueError, 'actual confirmation time'):
+                    audit.validate(self.messages, OWNER, self.ledger, self.state)
     def test_prior_review_survives_intervening_messages(self):
         gap = [message(f'om_CHAT_{i}', '讨论节点进度', i+3, i % 2 == 0) for i in range(7)]
         messages = self.messages[:2] + gap + [message('om_REVISION', '设计稿更新咯', 15)]

@@ -27,6 +27,8 @@ def main():
         for field in ['事项','处理完毕','事项编号','跟进类型','日期说明','下一步',
                       '事项分类','来源日期','来源月份','截止日期','时间分类','通知摘要','本人职责']:
             args += ['--field-id', base['fields'][field]]
+        if '确认完成时间' in base['fields']:
+            args += ['--field-id', base['fields']['确认完成时间']]
         result = subprocess.run(args,cwd=WORKSPACE,env=env,capture_output=True,text=True)
         if result.returncode:
             raise RuntimeError(result.stderr or result.stdout)
@@ -67,6 +69,7 @@ def main():
         item['base_record_id'] = row['record_id']
         item['base_record_missing'] = False
         item['completed'] = row['处理完毕']
+        item['base_completed_at'] = row.get('确认完成时间')
         item['completion_source'] = 'feishu_base_checkbox'
         item['completion_checked_at'] = now
         item['display_title'] = row.get('事项') or item['title']

@@ -99,7 +99,7 @@ def validate(messages, owner, ledger, state):
             raise ValueError('Disposition needs real evidence from the clue context: ' + cid)
         if decision == 'task':
             item = tasks.get(row.get('item_key'))
-            if not item or item.get('completed') or item.get('base_record_missing'):
+            if not item or not item.get('base_record_id') or item.get('completed') or item.get('base_record_missing'):
                 raise ValueError('Review clue must map to a live pending task, not a completed prior round: ' + cid)
         elif decision == 'needs_confirmation':
             label = row.get('label')
@@ -108,9 +108,9 @@ def validate(messages, owner, ledger, state):
             unresolved.append({**candidate, 'label': label, 'reason': row['reason']})
         else:
             code = row.get('reason_code')
-            if code not in {'informational_only', 'unrelated_to_user', 'not_actionable', 'user_completed_after', 'delegated_by_user'}:
+            if code not in {'informational_only', 'unrelated_to_user', 'not_actionable', 'user_completed_after', 'delegated_by_user', 'recorded_completion'}:
                 raise ValueError('Ambiguity, another executor, or an earlier review cannot exclude a clue: ' + cid)
-            if candidate['prior_review_ids'] and 'revision' in candidate['kinds'] and code not in {'user_completed_after','delegated_by_user'}:
+            if candidate['prior_review_ids'] and 'revision' in candidate['kinds'] and code not in {'user_completed_after','delegated_by_user','recorded_completion'}:
                 raise ValueError('A revision after the owner review needs a task, confirmation, or later owner closure: ' + cid)
             if code == 'user_completed_after':
                 origin = context[cid]
@@ -127,6 +127,12 @@ def validate(messages, owner, ledger, state):
                 quote = row.get('delegation_quote', '')
                 if not quote or not DELEGATED.search(quote) or not any(quote in m.get('content', '') for m in later):
                     raise ValueError('Delegation requires the owner later explicitly transferring review duty: ' + cid)
+            if code == 'recorded_completion':
+                item = tasks.get(row.get('item_key'), {})
+                closed = item.get('base_completed_at')
+                if (not item.get('completed') or not item.get('base_record_id') or not closed or
+                        timestamp({'source_time': closed}) <= timestamp(context[cid])):
+                    raise ValueError('Checkbox closure needs its actual confirmation time after this clue, not the last sync time: ' + cid)
         counts[decision] += 1
     return {'status': 'validated', 'evidence_digest': fingerprint(messages),
             'owner_id': owner, 'counts': counts, 'pending_candidates': unresolved}
