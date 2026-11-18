@@ -75,13 +75,10 @@ def init(confirm):
     configure_views(state)
     state['setup']['base_and_dashboard_ready']=True
     if not (ROOT/'assistant-control.json').exists():set_enabled(False)
-    from control_panel import install_entry
-    try:state['control_entry']=install_entry()
-    except (OSError,ValueError) as error:state['control_entry']={'entry_created':False,'attention':str(error)}
     write_state(state)
     print(json.dumps({'ok':True,'owner':identity['recipient_name'],'base_url':state['base']['url'],
-                      'dashboard_url':state['dashboard']['url'],'control_entry':state['control_entry'],
-                      'remaining':['configure card.action.trigger for your own app','open personal control panel and enable the receiver','verify callback roundtrip','configure and verify your host scheduler']},ensure_ascii=False))
+                      'dashboard_url':state['dashboard']['url'],
+                      'remaining':['configure card.action.trigger for your own app','ask AI to start the receiver after authorization','verify callback roundtrip','configure and verify your host scheduler']},ensure_ascii=False))
 
 def configure_views(state):
     from dashboard_support import call

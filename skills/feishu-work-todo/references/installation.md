@@ -60,11 +60,11 @@ lark-cli --profile feishu-work-todo event consume card.action.trigger --as bot -
 应看到 ready marker 和连接成功，再由使用者决定是否允许本人的登录启动接收进程。明确允许后运行：
 
 ```sh
-python3 scripts/control_panel.py open
+python3 scripts/service.py resume --confirm
 python3 scripts/manage.py doctor
 ```
 
-1.2初始化后默认关闭；本人从控制台点击“开启助手”，才会启动接收端。macOS使用本人LaunchAgent，代码复制到本人应用数据目录避免“文稿”目录的后台访问限制。Windows提供用户级登录任务，需在目标机器验证策略和路径；Linux启动本次用户会话的接收进程，不自动安装登录服务。日后从桌面“飞书待办控制台”自行启停，见control-panel.md，不删除表格。
+初始化后保持暂停，由AI在本人允许后启动接收端。macOS使用本人LaunchAgent，代码复制到本人应用数据目录避免“文稿”目录的后台访问限制。Windows提供用户级登录任务，需在目标机器验证策略和路径；Linux启动本次用户会话的接收进程，不自动安装登录服务。日后通过AI对话暂停或恢复，见[pause-resume.md](pause-resume.md)，保留表格与历史，不安装独立控制台。
 
 运行 `python3 scripts/verify_callback.py send` 给本人发送专用验证卡片。请本人点击“验证提交”，再运行 `python3 scripts/verify_callback.py check`，必须同时核对提交保存与原卡片更新成功。这个探针不创建工作记录，也不修改完成状态，空白新安装也能验证。正式清单发送脚本在此项通过前会拒绝发送。未验证接收功能时，可发送明确标注只读的文字摘要，不能发送假可交互按钮。
 

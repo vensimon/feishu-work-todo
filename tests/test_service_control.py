@@ -1,4 +1,4 @@
-"""Local switch and actual loopback HTTP tests, never against a real Feishu identity."""
+"""Dialog-driven lifecycle tests; use isolated data and no real Feishu account."""
 import contextlib
 import copy
 import io
@@ -9,15 +9,11 @@ import shutil
 import signal
 import subprocess
 import sys
-import threading
 import time
 import unittest
-import urllib.error
-import urllib.request
 from unittest.mock import patch
 import test_portable as base
 import assistant_control as control
-import control_panel as panel
 import service
 import card_callback_service
 
@@ -60,25 +56,39 @@ class ControlTests(ControlFixture,unittest.TestCase):
     def test_enable_failure_leaves_assistant_closed(self):
         control.set_enabled(False)
         with patch.object(service,'install',side_effect=RuntimeError('Authorization unavailable')):
-            result=panel.change_enabled(True)
-        self.assertFalse(result['ok']);self.assertFalse(control.read_control()['enabled']);self.assert_data_preserved()
+            with self.assertRaises(RuntimeError):service.resume(base.INITIAL)
+        self.assertFalse(control.read_control()['enabled']);self.assert_data_preserved()
     def test_close_works_with_expired_feishu_auth(self):
         with patch.object(service,'assert_identity',side_effect=AssertionError('Stop must not require auth')),patch.object(service,'unload') as unload:
-            result=panel.change_enabled(False)
-        self.assertTrue(result['ok']);unload.assert_called_once();self.assert_data_preserved()
-    def test_open_uninitialized_panel_does_not_enable_or_create_business_state(self):
-        (control.ROOT/'state.json').unlink()
-        result=panel.get_status();self.assertFalse(result['initialized'])
-        with self.assertRaises(ValueError):panel.change_enabled(True)
-        self.assertFalse((control.ROOT/'state.json').exists())
-    def test_status_contains_no_identifiers_or_credentials(self):
-        data=json.dumps(panel.get_status())
-        for private in ['ou_OFFLINE','cli_OFFLINE','base_OFFLINE','recipient_open_id','token']:self.assertNotIn(private,data)
+            result=service.stop(base.INITIAL)
+        self.assertTrue(result['receiver_stopped']);unload.assert_called_once();self.assert_data_preserved()
+    def test_status_requires_no_auth_and_creates_no_entry(self):
+        with patch.object(service,'assert_identity',side_effect=AssertionError('Status is read-only')),patch.object(service.subprocess,'Popen') as spawn:
+            self.assertTrue(service.status()['initialized']);spawn.assert_not_called()
         self.assert_data_preserved()
-    def test_entry_creation_starts_no_service_and_preserves_data(self):
-        with patch.object(service,'deploy',return_value=control.ROOT/'package'),patch.object(panel.subprocess,'Popen') as spawn:
-            result=panel.install_entry(control.ROOT/'test-desktop')
-        self.assertTrue(pathlib.Path(result['entry']).exists());spawn.assert_not_called();self.assert_data_preserved()
+    def test_uninitialized_resume_is_rejected_without_enabling(self):
+        (control.ROOT/'state.json').unlink();control.set_enabled(False)
+        with self.assertRaises(ValueError):service.resume({})
+        self.assertFalse(control.read_control()['enabled'])
+        self.assertFalse((control.ROOT/'state.json').exists())
+    def test_resume_and_pause_cli_preserve_all_records(self):
+        control.set_enabled(False)
+        with patch.object(service,'install',return_value={'receiver_started':True}) as start,patch.object(service,'unload') as stop,contextlib.redirect_stdout(io.StringIO()):
+            with patch.object(sys,'argv',['service.py','resume','--confirm']):service.main()
+            self.assertTrue(control.read_control()['enabled'])
+            with patch.object(sys,'argv',['service.py','pause','--confirm']):service.main()
+            self.assertFalse(control.read_control()['enabled'])
+        start.assert_called_once();stop.assert_called_once();self.assert_data_preserved()
+    def test_mutation_requires_explicit_action(self):
+        with patch.object(service,'resume') as start,patch.object(service,'stop') as stop:
+            with patch.object(sys,'argv',['service.py','pause']):
+                with self.assertRaises(RuntimeError):service.main()
+            start.assert_not_called();stop.assert_not_called()
+        self.assert_data_preserved()
+    def test_resume_is_idempotent_when_current_receiver_is_connected(self):
+        with patch.object(service,'status',return_value={'enabled':True,'receiver_connected':True,'receiver_version':service.CLIENT_VERSION}),patch.object(service,'install') as install:
+            self.assertTrue(service.resume(base.INITIAL)['already_running']);install.assert_not_called()
+        self.assert_data_preserved()
     def test_process_selection_excludes_other_installations(self):
         expected=str(control.ROOT/'package/scripts/card_callback_service.py')
         table={100:{'ppid':1,'command':'python '+expected},101:{'ppid':100,'command':'lark-cli event consume'},
@@ -95,56 +105,15 @@ class ControlTests(ControlFixture,unittest.TestCase):
         with patch.object(card_callback_service.os,'killpg') as terminate:
             card_callback_service.terminate_consumer(child)
         terminate.assert_called_with(child.pid,signal.SIGTERM)
-    def test_new_initialization_is_closed_and_has_entry(self):
+    def test_new_initialization_is_paused_without_entry_or_receiver(self):
         fake=base.FakeBase()
-        with patch.object(base.rp,'cli_json',return_value={'identities':{'user':{'status':'ready','available':True,'openId':base.IDENTITY['recipient_open_id']}},'appId':base.IDENTITY['application_id']}),patch.object(base.ds,'call',side_effect=fake.call),patch.object(base.ds,'rows',side_effect=fake.rows),patch.object(panel,'install_entry',return_value={'entry_created':True,'entry':'TEST_ENTRY'}),contextlib.redirect_stdout(io.StringIO()):
+        with patch.object(base.rp,'cli_json',return_value={'identities':{'user':{'status':'ready','available':True,'openId':base.IDENTITY['recipient_open_id']}},'appId':base.IDENTITY['application_id']}),patch.object(base.ds,'call',side_effect=fake.call),patch.object(base.ds,'rows',side_effect=fake.rows),patch.object(service,'install') as start,contextlib.redirect_stdout(io.StringIO()):
             base.manage.init(True)
             self.assertFalse(control.read_control()['enabled'])
-            self.assertTrue(panel.read(control.ROOT/'state.json')['control_entry']['entry_created'])
+            self.assertNotIn('control_entry',json.loads((control.ROOT/'state.json').read_text()))
+            start.assert_not_called()
             control.set_enabled(True);base.manage.init(True)
             self.assertTrue(control.read_control()['enabled'])
-
-class HttpControlTests(ControlFixture,unittest.TestCase):
-    def setUp(self):
-        super().setUp();self.server=panel.create_server()
-        self.thread=threading.Thread(target=self.server.serve_forever,daemon=True);self.thread.start()
-        self.addCleanup(self.server.server_close);self.addCleanup(self.server.shutdown)
-    def request(self,path='/api/status',value=None,token=True,origin=None,host=None):
-        headers={}
-        if token:headers['X-Control-Token']=self.server.token
-        if origin:headers['Origin']=origin
-        if host:headers['Host']=host
-        data=None
-        if value is not None:data=json.dumps(value).encode();headers['Content-Type']='application/json'
-        return urllib.request.urlopen(urllib.request.Request(self.server.origin+path,data=data,headers=headers),timeout=10)
-    def test_http_switch_is_real_and_preserves_business_state(self):
-        control.set_enabled(False)
-        with patch.object(service,'install',return_value={}) as start,patch.object(service,'stop',side_effect=lambda _:control.set_enabled(False)) as stop:
-            with self.request('/api/control',{'enabled':True}) as response:self.assertTrue(json.load(response)['status']['enabled'])
-            with self.request('/api/control',{'enabled':False}) as response:self.assertFalse(json.load(response)['status']['enabled'])
-        start.assert_called_once();stop.assert_called_once();self.assert_data_preserved()
-    def test_missing_token_and_cross_origin_cannot_toggle(self):
-        with patch.object(panel,'change_enabled') as change:
-            for kwargs in [{'token':False},{'origin':'https://untrusted.invalid'},{'host':'untrusted.invalid'}]:
-                with self.assertRaises(urllib.error.HTTPError) as error:self.request('/api/control',{'enabled':False},**kwargs)
-                self.assertEqual(error.exception.code,403)
-            change.assert_not_called()
-    def test_invalid_controls_are_rejected(self):
-        for value in [{'enabled':'false'},{'enabled':0},{'enabled':True,'recipient':'other'}]:
-            with self.assertRaises(urllib.error.HTTPError) as error:self.request('/api/control',value)
-            self.assertEqual(error.exception.code,400)
-        self.assert_data_preserved()
-    def test_page_is_self_contained_and_get_cannot_change_state(self):
-        with self.request('/',token=False) as response:
-            html=response.read().decode();self.assertIn('开启助手',html);self.assertIn('关闭助手',html)
-            self.assertNotIn('src="http',html);self.assertIn('frame-ancestors',response.headers['Content-Security-Policy'])
-        with self.assertRaises(urllib.error.HTTPError):self.request('/api/control?enabled=false')
-        self.assertTrue(control.read_control()['enabled'])
-    def test_double_click_reuses_existing_local_server(self):
-        descriptor={'pid':os.getpid(),'url':self.server.origin,'token':self.server.token,'runtime':str(control.ROOT)}
-        (control.ROOT/'control-server.json').write_text(json.dumps(descriptor))
-        with patch.object(panel.subprocess,'Popen') as spawn,contextlib.redirect_stdout(io.StringIO()):url=panel.open_panel(no_browser=True)
-        self.assertTrue(url.startswith(self.server.origin));spawn.assert_not_called()
 
 class ReceiverCleanupTests(ControlFixture,unittest.TestCase):
     def start_receiver(self):
@@ -160,14 +129,14 @@ class ReceiverCleanupTests(ControlFixture,unittest.TestCase):
             child.stderr.close()
         self.addCleanup(cleanup)
         for _ in range(80):
-            state=panel.read(control.ROOT/'card-service-status.json',{})
+            state=service.read(control.ROOT/'card-service-status.json',{})
             if state.get('ready'):return child,state['consumer_pid']
             if child.poll() is not None:self.fail(child.stderr.read())
             time.sleep(0.05)
         self.fail('Fake consumer did not become ready')
     def test_switch_off_disconnects_idle_consumer(self):
         child,pid=self.start_receiver();control.set_enabled(False);child.wait(timeout=5)
-        self.assertFalse(panel.read(control.ROOT/'card-service-status.json')['ready'])
+        self.assertFalse(service.read(control.ROOT/'card-service-status.json')['ready'])
         with self.assertRaises(OSError):os.kill(pid,0)
         self.assert_data_preserved()
     def test_sigterm_disconnects_consumer(self):

@@ -33,7 +33,6 @@ import collect
 import verify_callback as verify
 import online_config
 import assistant_control
-import control_panel
 import review_audit
 
 class FakeBase:
@@ -93,7 +92,6 @@ class PortableTests(unittest.TestCase):
         rp.prepare_storage();rp.write_state(copy.deepcopy(INITIAL));self.base=FakeBase()
         self.stack=contextlib.ExitStack()
         self.stack.enter_context(patch.object(online_config,'get_source',return_value=None))
-        self.stack.enter_context(patch.object(control_panel,'install_entry',return_value={'entry_created':True,'entry':'TEST_ENTRY'}))
         self.stack.enter_context(patch.object(rp,'cli_json',return_value={'identities':{'user':{'status':'ready','available':True,'openId':IDENTITY['recipient_open_id'],'userName':'Offline User'}},'appId':IDENTITY['application_id']}))
         self.stack.enter_context(patch.object(ds,'call',side_effect=self.base.call))
         self.stack.enter_context(patch.object(ds,'rows',side_effect=self.base.rows))

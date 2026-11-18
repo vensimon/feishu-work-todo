@@ -14,7 +14,7 @@ def read_control():
         data=json.loads(path.read_text())
         if type(data.get('enabled')) is not bool or type(data.get('generation')) is not int:raise ValueError('Invalid local switch')
         return data
-    except (ValueError,OSError):return {'enabled':False,'generation':-1,'error':'本机开关文件异常，已停止工作，请从控制台重新设置。'}
+    except (ValueError,OSError):return {'enabled':False,'generation':-1,'error':'本机运行状态异常，已暂停，请让AI检查并恢复。'}
 
 def set_enabled(enabled):
     if type(enabled) is not bool:raise ValueError('The local switch must be boolean')

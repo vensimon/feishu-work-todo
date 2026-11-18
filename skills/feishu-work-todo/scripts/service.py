@@ -11,7 +11,24 @@ import subprocess
 import sys
 import time
 from runtime_paths import ROOT,PROFILE,CLI,ENV,prepare_storage,assert_identity
-from assistant_control import set_enabled
+from assistant_control import set_enabled,read_control
+from online_config import CLIENT_VERSION
+
+def read(path,default=None):
+    try:return json.loads(path.read_text()) if path.exists() else default
+    except (ValueError,OSError):return default
+
+def live(pid):
+    try:os.kill(int(pid),0);return True
+    except (OSError,ValueError,TypeError):return False
+
+def status():
+    state=read(ROOT/'state.json',{});control=read_control();receiver=read(ROOT/'card-service-status.json',{})
+    return {'initialized':bool(state.get('recipient_open_id') and state.get('application_id')),
+            'enabled':control['enabled'],'switch_error':control.get('error'),
+            'receiver_connected':bool(receiver.get('ready') and live(receiver.get('pid')) and live(receiver.get('consumer_pid'))),
+            'receiver_version':receiver.get('service_version'),'client_version':CLIENT_VERSION,
+            'schedule_registered':bool(state.get('host_schedule',{}).get('verified'))}
 
 def identifiers(state):
     suffix=hashlib.sha256((state['application_id']+state['recipient_open_id']).encode()).hexdigest()[:10]
@@ -71,6 +88,18 @@ def stop(state):
     (ROOT/'card-service-status.json').write_text(json.dumps({'ready':False,'stopped_by_user':True}))
     return {'receiver_stopped':True,'data_preserved':True}
 
+def resume(state):
+    if not state.get('recipient_open_id') or not state.get('application_id'):
+        raise ValueError('请先完成本人的飞书授权与待办助手初始化。')
+    before=status()
+    if before['enabled'] and before['receiver_connected'] and before['receiver_version']==CLIENT_VERSION:
+        return {'already_running':True,'data_preserved':True}
+    set_enabled(True)
+    try:return install(state)
+    except Exception:
+        set_enabled(False)
+        raise
+
 def deploy():
     prepare_storage();source=pathlib.Path(__file__).resolve().parent.parent;deployed=ROOT/'package'
     if source!=deployed:
@@ -108,9 +137,15 @@ def install(state):
     return {'receiver_started':True,'ai_schedule_created':False,'login_start':sys.platform=='darwin' or os.name=='nt'}
 
 def main():
-    parser=argparse.ArgumentParser();parser.add_argument('action',choices=['install','stop']);parser.add_argument('--confirm',action='store_true');args=parser.parse_args()
-    if not args.confirm:raise RuntimeError('需本人确认当前接收进程的安装或停止，再使用--confirm。')
-    state=json.loads((ROOT/'state.json').read_text())
-    print(json.dumps(install(state) if args.action=='install' else stop(state),ensure_ascii=False))
+    parser=argparse.ArgumentParser();parser.add_argument('action',choices=['status','pause','resume','install','stop']);parser.add_argument('--confirm',action='store_true');args=parser.parse_args()
+    if args.action=='status':
+        print(json.dumps(status(),ensure_ascii=False));return
+    if not args.confirm:raise RuntimeError('仅在本人明确要求暂停或恢复后使用--confirm；询问方法不执行启停。')
+    state=read(ROOT/'state.json',{})
+    if args.action in ['resume','install']:result=resume(state)
+    elif state:result=stop(state)
+    else:
+        set_enabled(False);result={'receiver_stopped':True,'data_preserved':True}
+    print(json.dumps({'ok':True,**result,'status':status(),'host_schedule_changed':False},ensure_ascii=False))
 
 if __name__=='__main__':main()
