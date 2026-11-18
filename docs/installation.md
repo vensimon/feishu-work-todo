@@ -4,7 +4,7 @@
 
 ## 新用户
 
-1. 从仓库Releases下载 `feishu-work-todo-1.2.0.zip`。
+1. 从仓库Releases下载 `feishu-work-todo-1.3.0.zip`。
 2. 豆包工作：在技能入口导入本地技能文件，或把包交给AI请求引导安装。Kiro：解压后在 Agent Steering & Skills → + → Import a skill → Local folder 中选择 `feishu-work-todo`。
 3. 把README中的初始化话术发给AI，由其按技能引导完成依赖、本人授权、独立应用、台账、卡片回调和定时核验。
 4. 默认GitHub源随包提供。初次运行 `online_config.py sync` 检查规则版本；公开源无需GitHub授权，私有源需要本人读取权限。

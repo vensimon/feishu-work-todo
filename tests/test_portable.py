@@ -34,6 +34,7 @@ import verify_callback as verify
 import online_config
 import assistant_control
 import control_panel
+import review_audit
 
 class FakeBase:
     def __init__(self):
@@ -181,6 +182,14 @@ class PortableTests(unittest.TestCase):
         with patch.object(sys,'argv',['send_batch_card.py','--batch','offline-day']),patch.object(sender,'cli') as send:
             with self.assertRaises(RuntimeError):sender.main()
             send.assert_not_called();state['setup']['callback_roundtrip_verified']=True;rp.write_state(state)
+            with self.assertRaisesRegex(RuntimeError,'review-clue audit'):sender.main()
+            folder=rp.ROOT/'evidence'/'offline';folder.mkdir(parents=True)
+            through='2026-01-05T10:00:00+08:00'
+            (folder/'messages.json').write_text('[]')
+            (folder/'manifest.json').write_text(json.dumps({'complete':True,'through':through,'messages':0}))
+            ledger=folder/'ledger.json';ledger.write_text('[]')
+            review_audit.finish(folder,ledger,through,state)
+            state['last_successful_scan_at']=through;rp.write_state(state)
             send.return_value={'message_id':'om_OFFLINE_SENT'};sender.main();sender.main();self.assertEqual(send.call_count,1)
     def test_collect_excludes_topics_before_reading(self):
         chats=[{'chat_id':'oc_TOPIC','chat_mode':'topic','name':'Work topic'},

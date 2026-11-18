@@ -43,3 +43,7 @@
 ## GitHub可见范围
 
 公开源使用Raw HTTPS读取，无需同事GitHub登录。私有源需每位同事有仓库读取权限，并由自己的宿主提供读取token，使用Contents API。不要把维护者token发给同事。官方接口说明：[Repository contents](https://docs.github.com/en/rest/repos/contents)。
+
+## 1.3审核筛选更新
+
+2026-11-18.1的文字规则可由旧版在线同步，新增审核候选核对脚本和发送检查需要升级1.3.0安装包。升级后每日任务仍引用同一个feishu-work-todo技能；按daily.md为finish-scan追加证据目录与review-ledger参数，不重建个人台账或重新授权。仅同步guidance不等于获得新代码。

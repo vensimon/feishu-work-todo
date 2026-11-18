@@ -13,6 +13,7 @@ from batch_card_runtime import ROOT,CARDS,read,save,cli,patch
 from render_batch_card import build
 from online_config import sync,get_config
 from assistant_control import require_enabled,guarded_wait,run_guarded
+from review_audit import require_current_audit,pending_items
 
 def main():
     generation=require_enabled()
@@ -42,6 +43,7 @@ def main():
     assert_identity(state)
     if not state.get('setup',{}).get('callback_roundtrip_verified'):
         raise RuntimeError('Run verify_callback.py send/check before sending interactive work checklists')
+    require_current_audit(state)
     save(ROOT/'state.json',state)
     service=read(ROOT/'card-service-status.json',{})
     if not service.get('ready'):raise RuntimeError('Card submission service is not connected')
@@ -54,6 +56,11 @@ def main():
     config_sync=sync();config=get_config()
     require_enabled(generation)
     card,mapping=build(state['items'],False,config)
+    uncertain=pending_items(state)
+    if uncertain:
+        labels='；'.join(c['label'] for c in uncertain[:5])
+        more='等' if len(uncertain)>5 else ''
+        card['body']['elements'][0]['content']+=f'\n**另有{len(uncertain)}条审核线索待确认**：{labels}{more}。请回复确认职责或项目；这些线索尚未算作正式待办。'
     manifest={'preview':False,'batch':args.batch,'mapping':mapping,'card':card,'saved_keys':[],
               'style':config['style'],'config_version':config['version']}
     if args.activate_preview:

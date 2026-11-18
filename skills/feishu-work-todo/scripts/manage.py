@@ -183,6 +183,7 @@ def main():
     a=sub.add_parser('upsert');a.add_argument('file')
     a=sub.add_parser('option-add');a.add_argument('--field',required=True);a.add_argument('--name',required=True);a.add_argument('--confirm',action='store_true')
     a=sub.add_parser('finish-scan');a.add_argument('--through',required=True)
+    a.add_argument('--evidence-dir',required=True);a.add_argument('--review-ledger',required=True)
     a=sub.add_parser('schedule-record');a.add_argument('--host',required=True);a.add_argument('--job-id',required=True)
     args=parser.parse_args()
     if args.cmd=='doctor':doctor()
@@ -192,7 +193,10 @@ def main():
     elif args.cmd=='finish-scan':
         require_enabled()
         state=load();dt.datetime.fromisoformat(args.through)
+        from review_audit import finish
+        report=finish(args.evidence_dir,args.review_ledger,args.through,state)
         state['last_successful_scan_at']=args.through;write_state(state)
+        print(json.dumps({'ok':True,'review_audit':report['counts'],'pending_review_clues':len(report['pending_candidates'])},ensure_ascii=False))
     elif args.cmd=='schedule-record':
         state=load();state['host_schedule']={'host':args.host,'job_id':args.job_id,'verified':True};write_state(state)
 

@@ -6,6 +6,7 @@ import pathlib
 from runtime_paths import ROOT,cli_json,assert_identity,prepare_storage
 from online_config import sync,get_config
 from assistant_control import require_enabled,run_guarded
+from review_audit import nominate,pending_items
 
 def main():
     generation=require_enabled()
@@ -57,10 +58,15 @@ def main():
         for messages in pool.map(batch,enumerate(batches)):
             for message in messages:merged[message['message_id']]=message
     (folder/'messages.json').write_text(json.dumps(list(merged.values()),ensure_ascii=False))
+    clues=nominate(list(merged.values()),state['recipient_open_id'],pending_items(state))
+    audit={'candidates':clues,'ledger_template':[{'candidate_id':c['candidate_id'],'decision':None,
+            'reason':'','evidence_ids':[c['candidate_id']]} for c in clues]}
+    (folder/'review-candidates.json').write_text(json.dumps(audit,ensure_ascii=False,indent=2))
     require_enabled(generation)
     result={'complete':True,'start':start.isoformat(),'through':end.isoformat(),'messages':len(merged),
             'evidence_directory':str(folder),'topics_and_other_exclusions':len(excluded),'eligible_chats':len(allowed),
-            'config_version':get_config()['version'],'rules_file':config_sync['rules_file'],'config_sync_mode':config_sync['mode']}
+            'config_version':get_config()['version'],'rules_file':config_sync['rules_file'],'config_sync_mode':config_sync['mode'],
+            'review_candidates_file':str(folder/'review-candidates.json'),'review_candidates':len(clues)}
     (folder/'manifest.json').write_text(json.dumps(result,ensure_ascii=False,indent=2))
     print(json.dumps(result,ensure_ascii=False))
 
