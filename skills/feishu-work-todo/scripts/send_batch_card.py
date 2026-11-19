@@ -61,6 +61,10 @@ def main():
         labels='；'.join(c['label'] for c in uncertain[:5])
         more='等' if len(uncertain)>5 else ''
         card['body']['elements'][0]['content']+=f'\n**另有{len(uncertain)}条审核线索待确认**：{labels}{more}。请回复确认职责或项目；这些线索尚未算作正式待办。'
+    sources=state.get('source_candidates',[])
+    if sources:
+        labels='；'.join(s['label'] for s in sources[:3])
+        card['body']['elements'][0]['content']+=f'\n另有{len(sources)}条纪要或通知来源待核对：{labels}。'
     manifest={'preview':False,'batch':args.batch,'mapping':mapping,'card':card,'saved_keys':[],
               'style':config['style'],'config_version':config['version']}
     if args.activate_preview:

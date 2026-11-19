@@ -29,6 +29,8 @@ def main():
             args += ['--field-id', base['fields'][field]]
         if '确认完成时间' in base['fields']:
             args += ['--field-id', base['fields']['确认完成时间']]
+        if '原消息' in base['fields']:
+            args += ['--field-id', base['fields']['原消息']]
         result = subprocess.run(args,cwd=WORKSPACE,env=env,capture_output=True,text=True)
         if result.returncode:
             raise RuntimeError(result.stderr or result.stdout)
@@ -83,6 +85,8 @@ def main():
         item['base_source_month'] = row.get('来源月份')
         item['base_deadline_date'] = row.get('截止日期')
         item['base_time_category'] = row.get('时间分类')
+        if '原消息' in row:
+            item['base_message_app_link'] = row['原消息']
     state['last_completion_sync_at'] = now
     state['completion_backend'] = 'feishu_base'
     temporary = STATE_FILE.with_suffix('.tmp')

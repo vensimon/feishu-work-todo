@@ -120,8 +120,14 @@ def upsert(path):
         if role not in options['本人职责']:raise ValueError('Add this real responsibility with option-add first: '+role)
         if plan['followup'] not in options['跟进类型']:raise ValueError('Unknown progress state')
         if plan['category'] not in options['事项分类']:raise ValueError('Unknown business category')
-        if not source.get('message_id','').startswith('om_') or not source.get('chat_id','').startswith('oc_'):
-            raise ValueError('Retain concrete message and conversation evidence')
+        kind=source.get('kind','message')
+        if kind=='message':
+            if not source.get('message_id','').startswith('om_') or not source.get('chat_id','').startswith('oc_'):
+                raise ValueError('Retain concrete message and conversation evidence')
+        elif kind not in ['minutes','note','docx','base_record'] or not source.get('id'):
+            raise ValueError('Use a real meeting, document or record identifier')
+        from render_batch_card import source_message_url
+        if not source_message_url({'source':source}):raise ValueError('Retain the actual HTTPS source URL')
         day=dt.date.fromisoformat(source['time'][:10]).isoformat()
         summary=plan['summary'].strip()
         if not summary or len(summary)>get_config()['extraction']['summary_max_chars']:raise ValueError('Write a concise notification summary within the configured length')
@@ -151,10 +157,17 @@ def upsert(path):
             result=call('+record-batch-create',table=state['base']['table_id'],body={'create_records':[data]})
             rid=result['record_id_list'][0];added+=1
         prior=old.get(key,{})
+        supporting=list(prior.get('supporting_sources',[]))
+        origin=prior.get('message_app_link') or prior.get('source_url')
+        if origin and source['url']!=origin and not any(s.get('url')==source['url'] for s in supporting):
+            supporting.append({'kind':kind,'id':source.get('id') or source.get('message_id'),
+                               'url':source['url'],'time':source['time']})
         generated={**prior.get('last_generated_fields',{}),**(patch if key in by_key else data)}
         old[key]={**prior,'key':key,'title':plan['title'],'base_record_id':rid,'source_time':prior.get('source_time') or source['time'],
-                  'chat_id':prior.get('chat_id') or source['chat_id'],'message_id':prior.get('message_id') or source['message_id'],
-                  'message_app_link':prior.get('message_app_link') or source['url'],'latest_evidence':source,
+                  'chat_id':prior.get('chat_id') or source.get('chat_id'),'message_id':prior.get('message_id') or source.get('message_id'),
+                  'message_app_link':prior.get('message_app_link') or (source['url'] if kind=='message' else None),
+                  'source_url':prior.get('source_url') or source['url'],'origin_kind':prior.get('origin_kind',kind),
+                  'latest_evidence':source,'supporting_sources':supporting,
                   'execution_owner':plan.get('execution_owner'),'last_generated_fields':generated}
         by_key[key]={**by_key.get(key,{}),'record_id':rid,**(patch if key in by_key else data)}
         state['items']=list(old.values());write_state(state)
@@ -181,6 +194,7 @@ def main():
     a=sub.add_parser('option-add');a.add_argument('--field',required=True);a.add_argument('--name',required=True);a.add_argument('--confirm',action='store_true')
     a=sub.add_parser('finish-scan');a.add_argument('--through',required=True)
     a.add_argument('--evidence-dir',required=True);a.add_argument('--review-ledger',required=True)
+    a.add_argument('--source-ledger')
     a=sub.add_parser('schedule-record');a.add_argument('--host',required=True);a.add_argument('--job-id',required=True)
     args=parser.parse_args()
     if args.cmd=='doctor':doctor()
@@ -191,7 +205,7 @@ def main():
         require_enabled()
         state=load();dt.datetime.fromisoformat(args.through)
         from review_audit import finish
-        report=finish(args.evidence_dir,args.review_ledger,args.through,state)
+        report=finish(args.evidence_dir,args.review_ledger,args.through,state,args.source_ledger)
         state['last_successful_scan_at']=args.through;write_state(state)
         print(json.dumps({'ok':True,'review_audit':report['counts'],'pending_review_clues':len(report['pending_candidates'])},ensure_ascii=False))
     elif args.cmd=='schedule-record':

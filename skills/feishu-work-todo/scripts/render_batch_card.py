@@ -3,9 +3,11 @@ import argparse
 import datetime
 import json
 import pathlib
+import urllib.parse
 
 from runtime_paths import ROOT
 from online_config import get_config
+from checklist_selection import elements as checklist_elements
 FOLLOWUP_ORDER={'待处理':0,'需确认':1,'待他人反馈':2}
 ROLE_ORDER={'由你执行':0,'由你确认':1,'由你复核':2}
 ROLE_COLORS={'由你执行':'blue','由你确认':'orange','由你复核':'purple'}
@@ -50,6 +52,50 @@ def item_label(item,style=None):
     if style['show_next_step']:lines.append(style['detail_bullet']+' '+style['next_step_label']+'：'+summary)
     return '\n'.join(lines)
 
+def source_message_url(item):
+    """Use recorded message evidence only; never manufacture a chat/message URL."""
+    source=item.get('source') or {}
+    latest=item.get('latest_evidence') or {}
+    for value in [item.get('base_message_app_link'),item.get('message_app_link'),item.get('source_url'),
+                  source.get('url'),latest.get('url')]:
+        if not isinstance(value,str) or any(c.isspace() or c in '<>"\\' for c in value):continue
+        try:parts=urllib.parse.urlsplit(value)
+        except ValueError:continue
+        if parts.scheme=='https' and parts.hostname and not parts.username and not parts.password:
+            return value
+    return None
+
+def source_link_element(item,name):
+    url=source_message_url(item)
+    # Keep this outside the checker: completed/disabled tasks retain a usable link.
+    labels={'minutes':'查看纪要','note':'查看纪要','docx':'查看文档','base_record':'查看记录'}
+    label=labels.get(item.get('origin_kind'),'查看原消息')
+    content=('['+label+' ↗]('+url.replace('(','%28').replace(')','%29')+')' if url else
+             "<font color='grey'>原消息链接待补充</font>")
+    for source in item.get('supporting_sources',[]):
+        link=source_message_url({'source':source})
+        if link and link!=url:
+            content+='　['+labels.get(source.get('kind'),'查看来源')+' ↗]('+link.replace('(','%28').replace(')','%29')+')'
+            break
+    return {'tag':'markdown','element_id':'source_'+name.removeprefix('todo_'),
+            'content':content,'text_size':'notation','margin':'-12px 0px 0px 28px'}
+
+def add_source_links(card,mapping,items):
+    """Amend an existing checklist without renumbering or resetting any controls."""
+    by_key={item['key']:item for item in items}
+    controls=checklist_elements(card)
+    elements=[]
+    for element in controls:
+        if element.get('element_id','').startswith('source_'):continue
+        elements.append(element)
+        record=mapping.get(element.get('name'))
+        if element.get('tag')=='checker' and record:
+            item=by_key[record['key']]
+            if item['base_record_id']!=record['record_id']:raise ValueError('Source task mapping mismatch')
+            elements.append(source_link_element(item,element['name']))
+    controls[:]=elements
+    return card
+
 def build(items, preview=False,config=None):
     config=config or get_config();style=config['style']
     role_order={role:i for i,role in enumerate(style['role_order'])}
@@ -67,6 +113,7 @@ def build(items, preview=False,config=None):
         elements.append({'tag':'checker','name':name,'checked':False,
                          'text':{'tag':'lark_md','content':label},
                          'checked_style':{'show_strikethrough':True}})
+        elements.append(source_link_element(item,name))
     elements.append({'tag':'button','name':'submit_done','text':{'tag':'plain_text','content':style['submit_text']},
                      'type':'primary_filled','width':'fill','form_action_type':'submit',
                      'disabled':preview or not pending,
@@ -86,7 +133,8 @@ def build(items, preview=False,config=None):
                               {'tag':'form','name':'todo_form','direction':'vertical','vertical_spacing':'16px',
                                'elements':elements}]}}
     assert len(mapping)==len(pending)
-    assert len({element['name'] for element in elements})==len(elements)
+    names=[element['name'] for element in elements if 'name' in element]
+    assert len(set(names))==len(names)
     assert sum(element.get('form_action_type')=='submit' for element in elements)==1
     # P0-P7: one list/form, one primary submit, two body blocks, one color family.
     return card,mapping

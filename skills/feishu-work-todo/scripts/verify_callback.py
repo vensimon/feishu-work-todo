@@ -8,6 +8,7 @@ from runtime_paths import ROOT,assert_identity,write_state
 from batch_card_runtime import CARDS,read,save,cli
 from render_batch_card import build
 from assistant_control import require_enabled,run_guarded
+from checklist_selection import elements
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('action',choices=['send','check'])
@@ -30,7 +31,7 @@ def main():
     card['header']['title']['content']='待办助手 · 提交验证'
     card['header']['subtitle']['content']='仅验证，不涉及工作待办'
     card['body']['elements'][0]['content']='请点击下方按钮，验证清单提交能否保存。不会创建或完成任何工作待办。'
-    button=card['body']['elements'][1]['elements'][-1]
+    button=elements(card)[-1]
     button['disabled']=False;button['text']['content']='验证提交'
     data=cli(['im','+messages-send','--as','bot','--user-id',state['recipient_open_id'],
               '--msg-type','interactive','--content',json.dumps(card,ensure_ascii=False),

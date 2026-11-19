@@ -14,7 +14,7 @@ import urllib.parse
 import urllib.request
 from runtime_paths import ROOT,prepare_storage
 
-CLIENT_VERSION='1.4.0'
+CLIENT_VERSION='1.6.0'
 ASSETS=pathlib.Path(__file__).resolve().parent.parent/'assets'
 COLORS={'blue','orange','purple','neutral','red','green','yellow','wathet','turquoise','carmine','violet','indigo'}
 THEMES=COLORS-{'neutral'}|{'grey'}

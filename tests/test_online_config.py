@@ -17,6 +17,7 @@ from unittest.mock import patch
 import test_portable as base
 import online_config as online
 import render_batch_card as render
+from checklist_selection import elements
 
 class Response:
     def __init__(self,config,etag='"offline-etag"',api=False):
@@ -58,7 +59,7 @@ class OnlineTests(unittest.TestCase):
         self.assertTrue(first['updated']);self.assertTrue(second['updated'])
         card,mapping=render.build([{'key':'a','title':'Generic task','base_record_id':'rec_OFFLINE','base_user_role':['由你复核']}])
         self.assertEqual(card['header']['template'],'purple')
-        label=card['body']['elements'][1]['elements'][0]['text']['content']
+        label=elements(card)[0]['text']['content']
         self.assertIn("color='green'",label);self.assertIn('计划截止',label)
         self.assertIn('新的提取规则',(online.ROOT/'active-rules.md').read_text());self.assert_state_untouched()
     def test_outage_retains_last_valid_version(self):

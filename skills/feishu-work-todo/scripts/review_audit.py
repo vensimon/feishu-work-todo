@@ -137,7 +137,7 @@ def validate(messages, owner, ledger, state):
     return {'status': 'validated', 'evidence_digest': fingerprint(messages),
             'owner_id': owner, 'counts': counts, 'pending_candidates': unresolved}
 
-def finish(evidence_dir, ledger_file, through, state):
+def finish(evidence_dir, ledger_file, through, state, source_ledger=None):
     folder = pathlib.Path(evidence_dir)
     manifest = json.loads((folder/'manifest.json').read_text())
     if manifest.get('complete') is not True or manifest.get('through') != through:
@@ -147,6 +147,10 @@ def finish(evidence_dir, ledger_file, through, state):
         raise ValueError('Evidence count differs from collection manifest')
     ledger_bytes = pathlib.Path(ledger_file).read_bytes()
     report = validate(messages, state['recipient_open_id'], json.loads(ledger_bytes), state)
+    if (folder/'source-evidence.json').exists():
+        if not source_ledger:raise ValueError('Review all meeting and notification sources with --source-ledger')
+        from work_sources import validate_ledger
+        validate_ledger(folder,source_ledger,state)
     report.update(through=through, evidence_directory=str(folder.resolve()), ledger_file=str(pathlib.Path(ledger_file).resolve()))
     report['ledger_digest'] = hashlib.sha256(ledger_bytes).hexdigest()
     state['review_audit'] = report
@@ -161,6 +165,8 @@ def require_current_audit(state):
         raise RuntimeError('Complete the review-clue audit for this scan before sending a work checklist')
     # Completion may change after preparation; verify artifacts without re-opening work.
     folder = pathlib.Path(audit['evidence_directory'])
+    from work_sources import require_audit
+    require_audit(folder,state)
     manifest = json.loads((folder/'manifest.json').read_text())
     messages = json.loads((folder/'messages.json').read_text())
     if (manifest.get('complete') is not True or manifest.get('through') != audit['through'] or
@@ -177,6 +183,7 @@ def main():
     parser.add_argument('--ledger')
     parser.add_argument('--evidence-dir')
     parser.add_argument('--through')
+    parser.add_argument('--source-ledger')
     parser.add_argument('--record', action='store_true', help='Persist a validated report and pending clues in this state')
     args = parser.parse_args()
     messages = json.loads(pathlib.Path(args.messages).read_text())
@@ -184,7 +191,7 @@ def main():
     if args.ledger:
         if not args.evidence_dir or not args.through:
             parser.error('Validation requires --evidence-dir and --through')
-        report = finish(args.evidence_dir, args.ledger, args.through, state)
+        report = finish(args.evidence_dir, args.ledger, args.through, state,args.source_ledger)
         pathlib.Path(args.output).write_text(json.dumps(report, ensure_ascii=False, indent=2))
         if args.record:
             path = pathlib.Path(args.state)
